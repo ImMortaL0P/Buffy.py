@@ -1,0 +1,246 @@
+import discord
+from discord.ext import commands, tasks
+from discord.voice_client import VoiceClient
+import youtube_dl
+import os
+import asyncio
+from random import choice
+from keep_alive import keep_alive
+import requests
+import json
+from replit import db
+
+youtube_dl.utils.bug_reports_message = lambda: ''
+
+ytdl_format_options = {
+    'format': 'bestaudio',
+    'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    'restrictfilenames': True,
+    'noplaylist': True,
+    'nocheckcertificate': True,
+    'ignoreerrors': False,
+    'logtostderr': False,
+    'quiet': True,
+    'no_warnings': True,
+    'default_search': 'auto',
+    'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
+}
+
+ffmpeg_options = {
+    'options': '-vn'
+}
+
+ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
+class YTDLSource(discord.PCMVolumeTransformer):
+    def __init__(self, source, *, data, volume=0.5):
+        super().__init__(source, volume)
+
+        self.data = data
+
+        self.title = data.get('title')
+        self.url = data.get('url')
+
+    @classmethod
+    async def from_url(cls, url, *, loop=None, stream=False):
+        loop = loop or asyncio.get_event_loop()
+        data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+
+        if 'entries' in data:
+            # take first item from a playlist
+            data = data['entries'][0]
+
+        filename = data['url'] if stream else ytdl.prepare_filename(data)
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+
+
+client = commands.Bot(command_prefix='-',case_insensitive=True)
+
+status = ['Jamming out to music!', 'Eating!', 'Sleeping!']
+
+sad_words = ["sad", "depressed", "unhappy", "angry", "miserable", "dejected", "regret", "depressing"] 
+
+# encouraging_messages = ["cheer Up!!!","Hang in there.","you are a great person / bot!!!"]
+
+Starter_encouragements = ["Hello", 
+  "it's going to work!",
+  "cheer Up!!!",
+  "Hang in there.",
+  "you are a great person / bot!!!"]
+
+def update_encouragements(encouraging_message):
+  #motivate.append(encouraging_message)
+  if "encouragements" in db.key():
+    encouragements = db["encouragements"]
+    encouragements.append(encouraging_message)
+    db["encouragements"] = encouragements
+  else:
+    db["encouragements"] = [encouraging_message]
+
+def delete_encouragements(index):
+  encouragements = db["encouragements"]
+  if len(encouragements)>index:
+    del encouragements[index]
+    db["encouragements"]=encouragements
+
+# Anime Quote using API
+def get_anime():
+  response = requests.get("https://animechan.vercel.app/api/random").json()
+  character = response['character']
+  quote = response['quote']
+
+  Q = character +" : "+quote
+  return(Q)
+
+# Inspirational Quote using API
+def get_quote():
+  response = requests.get("https://zenquotes.io/api/random")
+  json_data = json.loads(response.text)
+  Quote = json_data[0]['q'] + " : " + json_data[0]['a']
+  return(Quote)
+
+  client.event
+async def on_ready():
+    activity = discord.Game(name="Netflix", type=3)
+    await bot.change_presence(status=discord.Status.idle, activity=activity)
+    int('We have logged in as {0.user}'.format(client))
+
+@client.event
+async def on_member_join(member):
+    chahnel = discord.utils.get(member.guild.channels, name='general')
+    await channel.send(f'Welcome {member.mention}!  Ready to jam out? See `-help` command for details!')
+
+#
+@client.event
+async def on_message(message):
+  if  ping
+@client.command(name='ping', help='This command returns the latency')
+async def ping(ctx):
+      await ctx.send(f'**Pong!** Latency: {round(client.latency * 1000)}ms')
+
+# Hello response 
+@client.command(name='hello', help='This command returns a random welcome message')
+async def hello(ctx):
+    responses = ['***grumble*** Why did you wake me up?', 'Top of the morning to you lad!', 'Hello, how are you?', 'Hi', '**Wasssuup!**']
+    await ctx.send(choice(responses))
+
+# die command
+@client.command(name='die', help='This command returns a random last words')
+async def die(ctx):
+    responses = ['why have you brought my short life to an end', 'i could have done so much more', 'i have a family, kill them instead']
+    await ctx.send(choice(responses))
+
+# Creator and thanking youtube!!
+@client.command(name='credits', help='This command returns the credits')
+async def credits(ctx):
+    await ctx.send('ImMortal & Kronos')
+    await ctx.send('Thanks to Youtube xd')
+
+# Random Anime Quotes
+@client.command(name='anime', help='This command returns Random statement from an anime character')
+async def anime(ctx):
+  await ctx.send(get_anime())
+
+# Random Inspirational Quotes
+@client.command(name='inspire', help='This commands returns a Random Inspirational Quote')
+async def inspired(ctx):
+  await ctx.send(get_quote())
+
+# adding new motivational phraes
+@
+
+
+client.command(name='new', help='This commands adds your motivational phrase to the library')
+async def new_motivation_phrase(ctx, message):
+  encouraging_message = ctx.message.content.split("new",1)[1]
+  update_encouragements(encouraging_message)
+  await ctx.send("New Encouraging Message Added!")
+
+
+
+@client.command(name='encglist', help='This commands shows your motivational phrase in the library')
+async def encglist(ctx, message):
+  await ctx.send(encouraging_messages())
+
+
+# -------------------------------------------------MEME COMMANDS--------------------------------------------------
+
+@client.command(name='meme',help='This command returns a random meme from Reddit')
+async def reddit(ctx):
+    r = requests.get("https://memes.blademaker.tv/api?lang=en")
+    res = r.json()
+    title = res["title"]
+    ups = res["ups"]
+    downs = res["downs"]
+    sub = res["subreddit"]
+    m = discord.Embed(title =f"{title}\nSubreddit: {sub}")
+    color = discord.Color.red()
+    m.set_image(url = res["image"])
+    m.set_footer(text=f"👍: {ups} 👎: {downs}  | Meme requested by : {ctx.author}")
+    await ctx.send(embed = m)
+
+
+
+# ---------------------------------------------MUSIC PLAYER COMMANDS----------------------------------------------
+
+#PLAY COMMAND
+@client.command(name='play', help='This command plays music')
+async def play(ctx, url):
+    if not ctx.message.author.voice:
+        await ctx.send("You are not connected to a voice channel")
+        return
+
+    else:
+        channel = ctx.message.author.voice.channel
+
+    await channel.connect()
+
+    server = ctx.message.guild
+    voice_channel = server.voice_client
+
+    async with ctx.typing():
+        player = await YTDLSource.from_url(url, loop=client.loop)
+        voice_channel.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
+
+    await ctx.send('**Now playing:** {}'.format(player.title))
+
+#PAUSE command
+@client.command(name='pause', help='This command pauses the music')
+async def pause(ctx):
+  voice_client = ctx.message.guild.voice_client
+  if voice_client.is_playing():
+    voice_client.pause()
+    await ctx.send('**player is paused**')
+  else:
+    await ctx.send("Currently no audio is playing.")
+
+#RESUME command
+@client.command(name='resume', help='This command resumes the paused music')
+async def resume(ctx):
+  voice_client = ctx.message.guild.voice_client
+  if voice_client.is_paused():
+    voice_client.resume()
+    await ctx.send('**palyer is resuming**')
+  else:
+    await ctx.send("Currently audio is not paused.")
+
+#STOP command
+@client.command(name='stop', help='This command stops the music and makes the bot leave the voice channel')
+async def stop(ctx):
+    voice_client = ctx.message.guild.voice_client
+    # await ctx.send("Bye! Bye!")
+    await voice_client.disconnect()
+
+#LEAVE command
+@client.command(name='leave', help='This command stops the music and makes the bot leave the voice channel')
+async def leave(ctx):
+  voice_client = ctx.message.guild.voice_client
+  await voice_client.disconnect()
+
+#async def change_status():
+#    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name = "-help"))
+#-----------------------------------------------------------------------------------------------------------------
+
+keep_alive()
+
+client.run(os.environ['TOKEN'])
