@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands, tasks
 from discord.voice_client import VoiceClient
+from discord.ext.commands import Bot
 import youtube_dl
 import os
 import asyncio
@@ -9,7 +10,10 @@ from keep_alive import keep_alive
 import requests
 import json
 from replit import db
+#from music import Player
 
+intents = discord.Intents.default()
+intents.members = True
 youtube_dl.utils.bug_reports_message = lambda: ''
 
 ytdl_format_options = {
@@ -26,14 +30,12 @@ ytdl_format_options = {
     'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
 }
 
-ffmpeg_options = {
-    'options': '-vn'
-}
+ffmpeg_options ={'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'}
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
 
 class YTDLSource(discord.PCMVolumeTransformer):
-    def __init__(self, source, *, data, volume=0.5):
+    def __init__(self, source, *, data, volume=0.7):
         super().__init__(source, volume)
 
         self.data = data
@@ -42,7 +44,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.url = data.get('url')
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
+    async def from_url(cls, url, *, loop=None, stream=True, download=False):
         loop = loop or asyncio.get_event_loop()
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
@@ -54,34 +56,10 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-client = commands.Bot(command_prefix='-',case_insensitive=True)
+client = commands.Bot(command_prefix='-',case_insensitive=True, intents=intents)
 
 status = ['Jamming out to music!', 'Eating!', 'Sleeping!']
 
-sad_words = ["sad", "depressed", "unhappy", "angry", "miserable", "dejected", "regret", "depressing"] 
-
-# encouraging_messages = ["cheer Up!!!","Hang in there.","you are a great person / bot!!!"]
-
-Starter_encouragements = ["Hello", 
-  "it's going to work!",
-  "cheer Up!!!",
-  "Hang in there.",
-  "you are a great person / bot!!!"]
-
-def update_encouragements(encouraging_message):
-  #motivate.append(encouraging_message)
-  if "encouragements" in db.key():
-    encouragements = db["encouragements"]
-    encouragements.append(encouraging_message)
-    db["encouragements"] = encouragements
-  else:
-    db["encouragements"] = [encouraging_message]
-
-def delete_encouragements(index):
-  encouragements = db["encouragements"]
-  if len(encouragements)>index:
-    del encouragements[index]
-    db["encouragements"]=encouragements
 
 # Anime Quote using API
 def get_anime():
@@ -99,27 +77,34 @@ def get_quote():
   Quote = json_data[0]['q'] + " : " + json_data[0]['a']
   return(Quote)
 
-  client.event
+#MANGALAM DO THE CHANGES. ISKE KARAN CODE KAAM NHI KR RAHA
+PREFIX = ("-")
+bot = commands.Bot(command_prefix=PREFIX, description='Hi')
+@client.event
 async def on_ready():
-    activity = discord.Game(name="Netflix", type=3)
-    await bot.change_presence(status=discord.Status.idle, activity=activity)
-    int('We have logged in as {0.user}'.format(client))
+    #activity = discord.Game(name="Netflix", type=3)
+    #await bot.change_presence(status=discord.Status.idle, activity=activity)
+    print("Bot is ready!")
+    
 
 @client.event
 async def on_member_join(member):
-    chahnel = discord.utils.get(member.guild.channels, name='general')
-    await channel.send(f'Welcome {member.mention}!  Ready to jam out? See `-help` command for details!')
+  print (f'{member} has joined the server.')
+  await member.send('Thank You for joining our server! Type -help for help with commands')
+  channel = discord.utils.get(member.guild.channels, name='general')
+  await channel.send(f'Welcome {member.mention}!  Ready to jam out? See `-help` command for details!')
 
-#
 @client.event
-async def on_message(message):
-  if  ping
+async def on_member_remove(member):
+  print(f'{member} has left the serevr')
+
+
 @client.command(name='ping', help='This command returns the latency')
 async def ping(ctx):
       await ctx.send(f'**Pong!** Latency: {round(client.latency * 1000)}ms')
 
 # Hello response 
-@client.command(name='hello', help='This command returns a random welcome message')
+@client.command(name='hello', help='This command returns a random welcome message', aliases = ['hey', 'hi','Hi','Hello', 'Hey', 'HELLO','HEY'])
 async def hello(ctx):
     responses = ['***grumble*** Why did you wake me up?', 'Top of the morning to you lad!', 'Hello, how are you?', 'Hi', '**Wasssuup!**']
     await ctx.send(choice(responses))
@@ -146,22 +131,10 @@ async def anime(ctx):
 async def inspired(ctx):
   await ctx.send(get_quote())
 
-# adding new motivational phraes
-@
-
-
-client.command(name='new', help='This commands adds your motivational phrase to the library')
-async def new_motivation_phrase(ctx, message):
-  encouraging_message = ctx.message.content.split("new",1)[1]
-  update_encouragements(encouraging_message)
-  await ctx.send("New Encouraging Message Added!")
-
-
-
-@client.command(name='encglist', help='This commands shows your motivational phrase in the library')
-async def encglist(ctx, message):
-  await ctx.send(encouraging_messages())
-
+#clear chat command
+@client.command(name='clear' , help='This command clears the chat in the channel by the number user inputs or 5 chats by default')
+async def clear(ctx, amount=5):
+  await ctx.channel.purge(limit=amount)
 
 # -------------------------------------------------MEME COMMANDS--------------------------------------------------
 
@@ -237,8 +210,7 @@ async def leave(ctx):
   voice_client = ctx.message.guild.voice_client
   await voice_client.disconnect()
 
-#async def change_status():
-#    await client.change_presence(activity=discord.Activity(type=discord.ActivityType.listening, name = "-help"))
+
 #-----------------------------------------------------------------------------------------------------------------
 
 keep_alive()
