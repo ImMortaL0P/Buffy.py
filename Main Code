@@ -5,6 +5,7 @@ from discord.ext.commands import Bot
 import youtube_dl
 import os
 import asyncio
+import random
 from random import choice
 from keep_alive import keep_alive
 import requests
@@ -60,7 +61,7 @@ client = commands.Bot(command_prefix='-',case_insensitive=True, intents=intents)
 
 status = ['Jamming out to music!', 'Eating!', 'Sleeping!']
 
-
+queue = {}
 # Anime Quote using API
 def get_anime():
   response = requests.get("https://animechan.vercel.app/api/random").json()
@@ -82,8 +83,7 @@ PREFIX = ("-")
 bot = commands.Bot(command_prefix=PREFIX, description='Hi')
 @client.event
 async def on_ready():
-    #activity = discord.Game(name="Netflix", type=3)
-    #await bot.change_presence(status=discord.Status.idle, activity=activity)
+    await client.change_presence(status=discord.Status.idle, activity=discord.Game('-help | -invite | Under-Development'))
     print("Bot is ready!")
     
 
@@ -104,7 +104,7 @@ async def ping(ctx):
       await ctx.send(f'**Pong!** Latency: {round(client.latency * 1000)}ms')
 
 # Hello response 
-@client.command(name='hello', help='This command returns a random welcome message', aliases = ['hey', 'hi','Hi','Hello', 'Hey', 'HELLO','HEY'])
+@client.command(name='hello', help='This command returns a random welcome message', aliases = ['hey', 'hi', 'wassup','aloha'])
 async def hello(ctx):
     responses = ['***grumble*** Why did you wake me up?', 'Top of the morning to you lad!', 'Hello, how are you?', 'Hi', '**Wasssuup!**']
     await ctx.send(choice(responses))
@@ -136,6 +136,54 @@ async def inspired(ctx):
 async def clear(ctx, amount=5):
   await ctx.channel.purge(limit=amount)
 
+#random answer to a user question from library of answers
+@client.command(aliases = ['8ball', 'carrom'])
+async def jin(ctx, *, question):
+  responses = ['It is certain',
+               'It is decidedly so',
+               'Yes! OfCourse!',
+               'Positive',
+               'Probably',
+               'That might be the case',
+               'Absolutely Positive',
+               'Yes! Without any doubt',
+               'Not sure',
+               'There is some certainity',
+               'Maybe. Who Knows!',
+               'Big NO!',
+               'Not till my life ends',
+               'Probably No',
+               'No Chance',
+               'Dont hope anything',
+               'Most probably No',
+               'No Possibility']
+  await ctx.send(f' Question : {question}\n Answer : {random.choice(responses)}')
+
+
+#-----------------Moderation Commands------------------#
+@client.command()
+async def kick(ctx, member:discord.Member, *, reason=None):
+  await member.kick(reason = reason)
+  await ctx.send(f' {member} has been kicked by {ctx.author}')
+
+@client.command()
+async def ban(ctx, member:discord.Member, *, reason = None):
+  await member.ban(reason = reason)
+  await ctx.send(f' {member} has been banned by {ctx.author}')
+
+@client.command()
+async def unban(ctx, *, member):
+  banned_users = await ctx.guild.bans()
+  member_name,member_discriminator = member.split('#')
+  for ban_entry in banned_users:
+    user = ban_entry.user
+
+    if(user.name, user.discriminator)==(member_name, member_discriminator):
+      await ctx.guild.unban(user)
+      await ctx.send(f' Unbanned {user.name} # {user.discriminator} by {ctx.author}')
+      await ctx.send ( f' Welcome back {user.mention}')
+      return
+
 # -------------------------------------------------MEME COMMANDS--------------------------------------------------
 
 @client.command(name='meme',help='This command returns a random meme from Reddit')
@@ -157,25 +205,59 @@ async def reddit(ctx):
 # ---------------------------------------------MUSIC PLAYER COMMANDS----------------------------------------------
 
 #PLAY COMMAND
+
 @client.command(name='play', help='This command plays music')
-async def play(ctx, url):
+async def play(ctx, *, url):
     if not ctx.message.author.voice:
         await ctx.send("You are not connected to a voice channel")
         return
 
     else:
+        
         channel = ctx.message.author.voice.channel
 
     await channel.connect()
 
     server = ctx.message.guild
     voice_channel = server.voice_client
+    ctx.voice_client.stop()
 
     async with ctx.typing():
         player = await YTDLSource.from_url(url, loop=client.loop)
         voice_channel.play(player, after=lambda e: print('Player error: %s' % e) if e else None)
 
     await ctx.send('**Now playing:** {}'.format(player.title))
+
+#queueing songs
+
+@client.command(name='queue', aliases=['q','que'])
+async def queue(ctx, *, url):
+  global queue
+
+  queue.append(url)
+  await ctx.send(f' **{url}** added to queue')
+
+#removing from queue
+
+@client.command(name='remove',aliases=['r','rem'])
+async def remove(ctx, number):
+  number+=1
+  global queue
+
+  try:
+    del(queue[int(number)])
+    await ctx.send(f'Queue updated')
+    
+  except:
+    await ctx.send(' Your queue is either Empty or the index is out of bounds')
+
+#Viewing the queue
+@client.command(name='viewqueue', aliases=['vq','view'])
+async def viewqueue(ctx):
+  await ctx.send(f' Your Queue is **{queue}** ')
+
+
+
 
 #PAUSE command
 @client.command(name='pause', help='This command pauses the music')
@@ -202,7 +284,8 @@ async def resume(ctx):
 async def stop(ctx):
     voice_client = ctx.message.guild.voice_client
     # await ctx.send("Bye! Bye!")
-    await voice_client.disconnect()
+    await voice_client.stop()
+    del (queue[0])
 
 #LEAVE command
 @client.command(name='leave', help='This command stops the music and makes the bot leave the voice channel')
