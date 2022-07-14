@@ -83,7 +83,7 @@ PREFIX = ("-")
 bot = commands.Bot(command_prefix=PREFIX, description='Hi')
 @client.event
 async def on_ready():
-    await client.change_presence(status=discord.Status.idle, activity=discord.Game('-help | -invite | Under-Development'))
+    await client.change_presence(status=discord.Status.idle, activity=discord.Activity(type=discord.ActivityType.listening, name="-help | -invite | \n Under Development"))
     print("Bot is ready!")
     
 
@@ -135,6 +135,12 @@ async def inspired(ctx):
 @client.command(name='clear' , help='This command clears the chat in the channel by the number user inputs or 5 chats by default')
 async def clear(ctx, amount=5):
   await ctx.channel.purge(limit=amount)
+
+#invite command to get the invite link of the bot
+
+@client.command()
+async def invite(ctx):
+  await ctx.send(f'https://discordapp.com/oauth2/authorize?&client_id=897849135384907886&scope=bot')
 
 #random answer to a user question from library of answers
 @client.command(aliases = ['8ball', 'carrom'])
@@ -203,7 +209,7 @@ async def reddit(ctx):
 
 
 # ---------------------------------------------MUSIC PLAYER COMMANDS----------------------------------------------
-
+queues = {}
 #PLAY COMMAND
 
 @client.command(name='play', help='This command plays music')
@@ -232,9 +238,8 @@ async def play(ctx, *, url):
 
 @client.command(name='queue', aliases=['q','que'])
 async def queue(ctx, *, url):
-  global queue
-
-  queue.append(url)
+  global queues
+  queues.append(url)
   await ctx.send(f' **{url}** added to queue')
 
 #removing from queue
@@ -254,7 +259,7 @@ async def remove(ctx, number):
 #Viewing the queue
 @client.command(name='viewqueue', aliases=['vq','view'])
 async def viewqueue(ctx):
-  await ctx.send(f' Your Queue is **{queue}** ')
+  await ctx.send(f' Your Queue is **{queues}** ')
 
 
 
@@ -285,7 +290,6 @@ async def stop(ctx):
     voice_client = ctx.message.guild.voice_client
     # await ctx.send("Bye! Bye!")
     await voice_client.stop()
-    del (queue[0])
 
 #LEAVE command
 @client.command(name='leave', help='This command stops the music and makes the bot leave the voice channel')
